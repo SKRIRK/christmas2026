@@ -203,25 +203,32 @@ const recipient = byId('recipient');
 const custom = byId('custom');
 const countdownToggle = byId('show-countdown');
 
+let viewingSharedGreeting = false;
+let showSceneCountdown = true;
+
 function readShareLink() {
   const params = new URLSearchParams(location.hash.slice(1));
-  recipient.value = (params.get('to') || '').slice(0, 32);
-  custom.value = (params.get('message') || defaultMessage).slice(0, 240);
-  countdownToggle.checked = params.get('countdown') !== 'off';
+  viewingSharedGreeting = ['to', 'message', 'countdown'].some((key) => params.has(key));
+
+  recipient.value = '';
+  custom.value = '';
+  countdownToggle.checked = true;
+  byId('share-url').value = '';
   byId('share-result').hidden = true;
   byId('feedback').textContent = '';
-  renderMessage();
+
+  renderMessage((params.get('to') || '').slice(0, 32), (params.get('message') || '').slice(0, 240));
+  showSceneCountdown = params.get('countdown') !== 'off';
   updateCountdown();
 }
 
-function renderMessage() {
-  const name = recipient.value.trim();
-  const body = custom.value.trim() || defaultMessage;
-  byId('message').textContent = name ? `${name}へ\n${body}` : body;
+function renderMessage(name, body) {
+  const greeting = body.trim() || defaultMessage;
+  byId('message').textContent = name.trim() ? name.trim() + 'へ\n' + greeting : greeting;
 }
 function updateCountdown() {
   const output = byId('countdown');
-  output.hidden = !countdownToggle.checked;
+  output.hidden = !showSceneCountdown;
   if (output.hidden) return;
   const seconds = Math.max(0, Math.ceil((Date.parse('2026-12-25T00:00:00+09:00') - Date.now()) / 1000));
   const pad = (v) => String(v).padStart(2, '0');
@@ -234,10 +241,13 @@ function updateCountdown() {
 readShareLink();
 window.addEventListener('hashchange', readShareLink);
 setInterval(updateCountdown, 250);
-countdownToggle.addEventListener('change', updateCountdown);
 for (const field of [recipient, custom, countdownToggle]) {
   field.addEventListener('input', () => {
-    renderMessage();
+    if (!viewingSharedGreeting) {
+      renderMessage(recipient.value, custom.value);
+      showSceneCountdown = countdownToggle.checked;
+      updateCountdown();
+    }
     byId('share-result').hidden = true;
     byId('feedback').textContent = '';
   });
@@ -315,6 +325,7 @@ soundtrack.volume = .35;
 playSoundtrack(true);
 
 if (ctx) requestAnimationFrame(frame);
+
 
 
 
